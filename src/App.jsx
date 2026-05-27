@@ -70,19 +70,25 @@ function App() {
   };
 
   // SERVICIO DE WHATSAPP OPTIMIZADO
-  const handleWhatsAppSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.fullName || !formData.phone) {
-      alert('Por favor ingresa tu nombre y número telefónico.');
-      return;
-    }
+const handleWhatsAppSubmit = (e) => {
+  e.preventDefault();
+  
+  // 1. Validación rápida de seguridad
+  if (!formData.fullName || !formData.phone) {
+    alert('Por favor ingresa tu nombre y número telefónico.');
+    return;
+  }
 
-    const fallbackMessage = `Hola ${ASESOR_NAME}, soy ${formData.fullName}. Deseo recibir una cotización del *${selectedPlan}* para la ciudad de ${formData.city}.`;
-    const encodedMessage = encodeURIComponent(fallbackMessage);
-    
-    window.open(`https://wa.me/${ASESOR_WHATSAPP}?text=${encodedMessage}`, '_blank');
-    closeModal();
-  };
+  // 2. Construcción del mensaje personalizado con formato Markdown de WhatsApp
+  const fallbackMessage = `Hola ${ASESOR_NAME}, soy ${formData.fullName}. Deseo recibir una cotización del *${selectedPlan}* para la ciudad de ${formData.city}. Mi celular de contacto es ${formData.phone}.`;
+  
+  // 3. Codificación del texto para que sea válido en una URL (cambia espacios por %20, etc.)
+  const encodedMessage = encodeURIComponent(fallbackMessage);
+  
+  // 4. Redirección limpia abriendo una nueva pestaña
+  window.open(`https://wa.me/${ASESOR_WHATSAPP}?text=${encodedMessage}`, '_blank');
+  closeModal();
+};
 
   return (
     <div className="landing-app">
