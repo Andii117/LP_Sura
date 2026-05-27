@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
+
+import emailjs from '@emailjs/browser';
 
 function App() {
-  // Manejo del estado del Modal y Plan seleccionado
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('Plan Global');
+  const [isSending, setIsSending] = useState(false); // Estado para controlar el botón de carga
   
-  // Campos del Formulario de Contacto
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
-    city: 'Villavicencio' // Ubicación preestablecida dinámicamente
+    city: 'Villavicencio'
   });
 
   const handleInputChange = (e) => {
@@ -25,117 +26,66 @@ function App() {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setIsSending(false);
   };
 
-  // SERVICIO 1: Envío de Correo vía EmailJS (Frontend Pure)
-  const handleEmailSubmit = (e) => {
-    e.preventDefault();
+  // SERVICIO DE CORREO: Lógica real con EmailJS
+const handleEmailSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!formData.fullName || !formData.email || !formData.phone) {
+    alert('Por favor, completa los campos obligatorios para el envío.');
+    return;
+  }
+
+  setIsSending(true);
+
+  // Mapeamos las variables EXACTAS que tienes en tu HTML de EmailJS
+  const templateParams = {
+    to_name: 'Andres David Rojas',
+    from_name: formData.fullName,
+    phone_number: formData.phone,
+    reply_to: formData.email,
+    city_location: formData.city,
+    selected_plan: selectedPlan
+  };
+
+  try {
+    // Usamos la sintaxis oficial y limpia pasando los IDs correctos
+    const response = await emailjs.send(
+      'service_kv8wvaw', 
+      'template_wljqg8m', 
+      templateParams, 
+      'fzI1r5T9PIT3-bBIm'
+    );
     
-    if (!formData.fullName || !formData.email || !formData.phone) {
-      alert('Por favor, completa los campos obligatorios para el envío.');
-      return;
-    }
-
-    // Estructura de parámetros mapeados para tu plantilla de EmailJS
-    const templateParams = {
-      from_name: formData.fullName,
-      reply_to: formData.email,
-      phone_number: formData.phone,
-      selected_plan: selectedPlan,
-      city_location: formData.city,
-      to_name: 'Andres David Rojas'
-    };
-
-    console.log('Enviando datos a EmailJS...', templateParams);
-    
-    /* PASOS PARA ACTIVAR EMAILJS:
-      1. Instalar la librería en la consola: npm install @emailjs/browser
-      2. Importar al inicio del archivo: import emailjs from '@emailjs/browser';
-      3. Descomentar el siguiente bloque configurando tus IDs:
-    */
-    /*
-    emailjs.send('TU_SERVICE_ID', 'TU_TEMPLATE_ID', templateParams, 'TU_PUBLIC_KEY')
-      .then((response) => {
-         alert('¡Solicitud de cotización enviada por Correo con éxito!');
-         closeModal();
-      }, (err) => {
-         alert('Error al enviar el correo, por favor intenta de nuevo.');
-         console.error('EmailJS Error:', err);
-      });
-    */
-
-    // Simulación Front-end hasta poner las llaves reales:
-    alert(`¡Éxito! Correo procesado para el "${selectedPlan}". Nos comunicaremos a: ${formData.email}`);
+    console.log('¡Éxito absoluto en el servidor!:', response.status, response.text);
+    alert(`¡Éxito! Solicitud de cotización enviada correctamente.`);
     closeModal();
-  };
+  } catch (error) {
+    // Al capturar el error aquí, limpiaremos el objeto para ver qué dice el texto del servidor
+    console.error('Error devuelto por EmailJS:', error);
+    
+    // Si el error viene del servidor, suele traer una propiedad 'text' con el motivo exacto
+    if (error && error.text) {
+      console.log('Mensaje específico del servidor EmailJS:', error.text);
+    }
+    
+    alert('Hubo un problema al procesar el envío por correo.');
+    setIsSending(false);
+  }
+};
 
-  // SERVICIO 2: Integración de Mensajería vía Meta WhatsApp Cloud API
-  const handleWhatsAppSubmit = async (e) => {
+  // El servicio de WhatsApp queda temporalmente con el fallback wa.me rápido
+  const handleWhatsAppSubmit = (e) => {
     e.preventDefault();
-
     if (!formData.fullName || !formData.phone) {
       alert('Por favor ingresa tu nombre y número telefónico.');
       return;
     }
-
-    const recipientPhoneClean = formData.phone.replace(/\s+/g, '').replace(/\+/g, '');
-
-    /* LOGICA OFICIAL DE META CLOUD API:
-      Hace un POST directo a Graph Facebook utilizando tus tokens de Desarrollador.
-    */
-    const META_PHONE_NUMBER_ID = 'TU_META_PHONE_NUMBER_ID'; 
-    const META_ACCESS_TOKEN = 'TU_META_ACCESS_TOKEN'; 
-    
-    const payload = {
-      messaging_product: "whatsapp",
-      to: recipientPhoneClean.startsWith('57') ? recipientPhoneClean : `57${recipientPhoneClean}`,
-      type: "template",
-      template: {
-        name: "cotizacion_sura", // Tu plantilla aprobada en el Business Manager de Meta
-        language: { code: "es" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", text: formData.fullName },
-              { type: "text", text: selectedPlan }
-            ]
-          }
-        ]
-      }
-    };
-
-    try {
-      /*
-      // Descomenta este bloque al configurar las credenciales en Meta Developers:
-      const response = await fetch(`https://graph.facebook.com/v18.0/${META_PHONE_NUMBER_ID}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${META_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        alert('¡Mensaje oficial enviado por la API de WhatsApp Cloud!');
-        closeModal();
-        return;
-      }
-      */
-    } catch (error) {
-      console.error('Error al conectar con la API de Meta:', error);
-    }
-
-    /* FALLBACK TRANSPARENTE (REDIRECCIÓN WA.ME):
-      Si no se cuenta con los tokens de Meta cargados en el Front, abre inmediatamente 
-      el chat nativo del asesor con el mensaje estructurado sin perder al cliente.
-    */
-    const fallbackMessage = `Hola Andres, soy ${formData.fullName}. Deseo recibir una cotización personalizada del *${selectedPlan}* de Seguros SURA. Mi ciudad de residencia es ${formData.city}.`;
+    const fallbackMessage = `Hola Andres, soy ${formData.fullName}. Deseo recibir una cotización del *${selectedPlan}* para la ciudad de ${formData.city}.`;
     const encodedMessage = encodeURIComponent(fallbackMessage);
-    
-    // Configura aquí tu número de asesor SURA real:
-    const ASESOR_WHATSAPP_NUMBER = "573001234567"; 
+    const ASESOR_WHATSAPP_NUMBER = "573002593351"; 
     
     window.open(`https://wa.me/${ASESOR_WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
     closeModal();
@@ -156,7 +106,7 @@ function App() {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="hero-section">
         <div className="container hero-grid">
           <div className="hero-content">
@@ -195,34 +145,26 @@ function App() {
 
           <div className="pillars-grid">
             <div className="pillar-card">
-              <div className="pillar-icon-box p-blue">
-                <i className="fa-solid fa-map-location-dot"></i>
-              </div>
+              <div className="pillar-icon-box p-blue"><i className="fa-solid fa-map-location-dot"></i></div>
               <h3>Cobertura Nacional</h3>
             </div>
             <div className="pillar-card">
-              <div className="pillar-icon-box p-cyan">
-                <i className="fa-solid fa-hospital"></i>
-              </div>
+              <div className="pillar-icon-box p-cyan"><i className="fa-solid fa-hospital"></i></div>
               <h3>Clínicas Aliadas</h3>
             </div>
             <div className="pillar-card">
-              <div className="pillar-icon-box p-red">
-                <i className="fa-solid fa-heart-pulse"></i>
-              </div>
+              <div className="pillar-icon-box p-red"><i className="fa-solid fa-heart-pulse"></i></div>
               <h3>Hospitalización y Cirugías</h3>
             </div>
             <div className="pillar-card">
-              <div className="pillar-icon-box p-orange">
-                <i className="fa-solid fa-user-doctor"></i>
-              </div>
+              <div className="pillar-icon-box p-orange"><i className="fa-solid fa-user-doctor"></i></div>
               <h3>Atención Especializada</h3>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pólizas de Salud */}
+      {/* Pólizas */}
       <section className="section-padding">
         <div className="container">
           <div className="section-title-block">
@@ -231,7 +173,6 @@ function App() {
           </div>
 
           <div className="plans-grid">
-            {/* Plan 1 */}
             <div className="plan-card">
               <div className="plan-header global">
                 <h3>Plan Global</h3>
@@ -249,7 +190,6 @@ function App() {
               </div>
             </div>
 
-            {/* Plan 2 */}
             <div className="plan-card">
               <div className="plan-header clasico">
                 <h3>Plan Clásico</h3>
@@ -267,7 +207,6 @@ function App() {
               </div>
             </div>
 
-            {/* Plan 3 */}
             <div className="plan-card">
               <div className="plan-header todos">
                 <h3>Plan de Salud para Todos</h3>
@@ -325,7 +264,7 @@ function App() {
         </div>
       </section>
 
-      {/* Comparativa y Testimonios */}
+      {/* Comparativa */}
       <section className="section-padding">
         <div className="container comparison-split-grid">
           <div className="vs-card">
@@ -364,91 +303,98 @@ function App() {
         </div>
       </footer>
 
-      {/* MODAL INTERACTIVO */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Solicitar Cotización</h3>
-              <p>Estás cotizando: <strong>{selectedPlan}</strong></p>
-              <button className="modal-close-btn" onClick={closeModal}>
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-            
-            <form className="modal-body">
-              <div className="form-group">
-                <label>Nombre Completo *</label>
-                <input 
-                  type="text" 
-                  name="fullName"
-                  className="form-control" 
-                  placeholder="Ej. Juan Pérez" 
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Correo Electrónico *</label>
-                <input 
-                  type="email" 
-                  name="email"
-                  className="form-control" 
-                  placeholder="ejemplo@correo.com" 
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Celular / WhatsApp *</label>
-                <input 
-                  type="tel" 
-                  name="phone"
-                  className="form-control" 
-                  placeholder="Ej. 3101234567" 
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Ciudad</label>
-                <input 
-                  type="text" 
-                  name="city"
-                  className="form-control" 
-                  value={formData.city}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              {/* SELECCIÓN DE DOS SERVICIOS SOLICITADOS */}
-              <div className="service-actions-grid">
-                <button 
-                  type="button" 
-                  className="btn-service-submit btn-whatsapp-submit"
-                  onClick={handleWhatsAppSubmit}
-                >
-                  <i className="fa-brands fa-whatsapp"></i> WhatsApp
-                </button>
-                
-                <button 
-                  type="button" 
-                  className="btn-service-submit btn-email-submit"
-                  onClick={handleEmailSubmit}
-                >
-                  <i className="fa-solid fa-envelope"></i> Enviar Correo
-                </button>
-              </div>
-            </form>
-          </div>
+{/* MODAL INTERACTIVO */}
+{isModalOpen && (
+  <div className="modal-overlay" onClick={closeModal}>
+    <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header">
+        <h3>Solicitar Cotización</h3>
+        <p>Estás cotizando: <strong>{selectedPlan}</strong></p>
+        <button type="button" className="modal-close-btn" onClick={closeModal}>
+          <i className="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      {/* PASO 1: Quitamos los botones con onClick individuales y dejamos que el 
+        formulario controle todo el envío de manera estándar con onSubmit.
+      */}
+      <form className="modal-body" onSubmit={handleEmailSubmit}>
+        <div className="form-group">
+          <label>Nombre Completo *</label>
+          <input 
+            type="text" 
+            name="fullName"
+            className="form-control" 
+            placeholder="Ej. Juan Pérez" 
+            value={formData.fullName}
+            onChange={handleInputChange}
+            required 
+          />
         </div>
-      )}
+
+        <div className="form-group">
+          <label>Correo Electrónico *</label>
+          <input 
+            type="email" 
+            name="email"
+            className="form-control" 
+            placeholder="ejemplo@correo.com" 
+            value={formData.email}
+            onChange={handleInputChange}
+            required 
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Celular / WhatsApp *</label>
+          <input 
+            type="tel" 
+            name="phone"
+            className="form-control" 
+            placeholder="Ej. 3101234567" 
+            value={formData.phone}
+            onChange={handleInputChange}
+            required 
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Ciudad</label>
+          <input 
+            type="text" 
+            name="city"
+            className="form-control" 
+            value={formData.city}
+            onChange={handleInputChange}
+          />
+        </div>
+
+        <div className="service-actions-grid">
+          {/* Boton de WhatsApp: Mantiene type="button" para que NO dispare el formulario 
+          */}
+          <button 
+            type="button" 
+            className="btn-service-submit btn-whatsapp-submit"
+            onClick={handleWhatsAppSubmit}
+          >
+            <i className="fa-brands fa-whatsapp"></i> WhatsApp
+          </button>
+          
+          {/* Boton de Correo: Ahora es type="submit", el cual activa el onSubmit del formulario
+          */}
+          <button 
+            type="submit" 
+            className="btn-service-submit btn-email-submit"
+            disabled={isSending}
+          >
+            <i className={isSending ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-envelope"}></i> 
+            {isSending ? ' Enviando...' : ' Enviar Correo'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 }
