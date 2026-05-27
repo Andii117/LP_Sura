@@ -1,17 +1,21 @@
-import  { useState } from 'react';
-
+import { useState } from 'react';
 import emailjs from '@emailjs/browser';
 
 function App() {
+  // 1. Centralizamos la lectura de variables de entorno al inicio del componente
+  const ASESOR_NAME = import.meta.env.VITE_ASESOR_NAME || 'Asesor SURA';
+  const ASESOR_WHATSAPP = import.meta.env.VITE_ASESOR_WHATSAPP;
+  const DEFAULT_CITY = import.meta.env.VITE_DEFAULT_CITY || 'Villavicencio';
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('Plan Global');
-  const [isSending, setIsSending] = useState(false); // Estado para controlar el botón de carga
+  const [isSending, setIsSending] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
-    city: 'Villavicencio'
+    city: DEFAULT_CITY // Usamos la ciudad del .env como estado inicial
   });
 
   const handleInputChange = (e) => {
@@ -29,65 +33,54 @@ function App() {
     setIsSending(false);
   };
 
-  // SERVICIO DE CORREO: Lógica real con EmailJS
-const handleEmailSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.fullName || !formData.email || !formData.phone) {
-    alert('Por favor, completa los campos obligatorios para el envío.');
-    return;
-  }
+  // SERVICIO DE CORREO OPTIMIZADO
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.fullName || !formData.email || !formData.phone) {
+      alert('Por favor, completa los campos obligatorios para el envío.');
+      return;
+    }
 
-  setIsSending(true);
+    setIsSending(true);
 
-  // Mapeamos las variables EXACTAS que tienes en tu HTML de EmailJS
-  const templateParams = {
-    to_name: 'Andres David Rojas',
-    from_name: formData.fullName,
-    phone_number: formData.phone,
-    reply_to: formData.email,
-    city_location: formData.city,
-    selected_plan: selectedPlan
+    const templateParams = {
+      to_name: ASESOR_NAME, // Dinámico desde .env
+      from_name: formData.fullName,
+      phone_number: formData.phone,
+      reply_to: formData.email,
+      city_location: formData.city,
+      selected_plan: selectedPlan
+    };
+
+    const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+    const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+    try {
+      const response = await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
+      console.log('¡Éxito absoluto en el servidor!:', response.status, response.text);
+      alert(`¡Éxito! Solicitud de cotización enviada correctamente.`);
+      closeModal();
+    } catch (error) {
+      console.error('Error devuelto por EmailJS:', error);
+      alert('Hubo un problema al procesar el envío por correo.');
+      setIsSending(false);
+    }
   };
 
-  try {
-    // Usamos la sintaxis oficial y limpia pasando los IDs correctos
-    const response = await emailjs.send(
-      'service_kv8wvaw', 
-      'template_wljqg8m', 
-      templateParams, 
-      'fzI1r5T9PIT3-bBIm'
-    );
-    
-    console.log('¡Éxito absoluto en el servidor!:', response.status, response.text);
-    alert(`¡Éxito! Solicitud de cotización enviada correctamente.`);
-    closeModal();
-  } catch (error) {
-    // Al capturar el error aquí, limpiaremos el objeto para ver qué dice el texto del servidor
-    console.error('Error devuelto por EmailJS:', error);
-    
-    // Si el error viene del servidor, suele traer una propiedad 'text' con el motivo exacto
-    if (error && error.text) {
-      console.log('Mensaje específico del servidor EmailJS:', error.text);
-    }
-    
-    alert('Hubo un problema al procesar el envío por correo.');
-    setIsSending(false);
-  }
-};
-
-  // El servicio de WhatsApp queda temporalmente con el fallback wa.me rápido
+  // SERVICIO DE WHATSAPP OPTIMIZADO
   const handleWhatsAppSubmit = (e) => {
     e.preventDefault();
     if (!formData.fullName || !formData.phone) {
       alert('Por favor ingresa tu nombre y número telefónico.');
       return;
     }
-    const fallbackMessage = `Hola Andres, soy ${formData.fullName}. Deseo recibir una cotización del *${selectedPlan}* para la ciudad de ${formData.city}.`;
+
+    const fallbackMessage = `Hola ${ASESOR_NAME}, soy ${formData.fullName}. Deseo recibir una cotización del *${selectedPlan}* para la ciudad de ${formData.city}.`;
     const encodedMessage = encodeURIComponent(fallbackMessage);
-    const ASESOR_WHATSAPP_NUMBER = "573002593351"; 
     
-    window.open(`https://wa.me/${ASESOR_WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
+    window.open(`https://wa.me/${ASESOR_WHATSAPP}?text=${encodedMessage}`, '_blank');
     closeModal();
   };
 
@@ -98,7 +91,7 @@ const handleEmailSubmit = async (e) => {
         <div className="container header-container">
           <div className="brand-wrapper">
             <h1 className="brand-title">Asesor <span>SURA</span></h1>
-            <span className="brand-subtitle">Andres David Rojas</span>
+            <span className="brand-subtitle">{ASESOR_NAME}</span>
           </div>
           <button className="btn-primary" onClick={() => openQuoteModal('Plan Global')}>
             <i className="fa-solid fa-file-invoice-dollar"></i> Cotiza Ahora
@@ -111,7 +104,7 @@ const handleEmailSubmit = async (e) => {
         <div className="container hero-grid">
           <div className="hero-content">
             <h1>
-              Hola, soy <strong>Andres David Rojas</strong>, asesor exclusivo de <strong>Seguros SURA</strong> y esta es mi página web para poder llegar a más personas y familias.
+              Hola, soy <strong>{ASESOR_NAME}</strong>, asesor exclusivo de <strong>Seguros SURA</strong> y esta es mi página web para poder llegar a más personas y familias.
             </h1>
             <p className="hero-disclaimer">
               <i className="fa-solid fa-shield-halved"></i> En ningún momento se solicitará dineros, brindamos asesoría y solo se solicita la información básica para realizar la cotización.
@@ -294,7 +287,7 @@ const handleEmailSubmit = async (e) => {
       <footer className="main-footer">
         <div className="container footer-content">
           <div className="footer-info">
-            <h4>Asesor SURA - Andres David Rojas</h4>
+            <h4>Asesor SURA - {ASESOR_NAME}</h4>
             <p>Asesoría exclusiva en soluciones de salud integral.</p>
           </div>
           <div className="footer-copyright">
@@ -303,98 +296,91 @@ const handleEmailSubmit = async (e) => {
         </div>
       </footer>
 
-{/* MODAL INTERACTIVO */}
-{isModalOpen && (
-  <div className="modal-overlay" onClick={closeModal}>
-    <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h3>Solicitar Cotización</h3>
-        <p>Estás cotizando: <strong>{selectedPlan}</strong></p>
-        <button type="button" className="modal-close-btn" onClick={closeModal}>
-          <i className="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-      
-      {/* PASO 1: Quitamos los botones con onClick individuales y dejamos que el 
-        formulario controle todo el envío de manera estándar con onSubmit.
-      */}
-      <form className="modal-body" onSubmit={handleEmailSubmit}>
-        <div className="form-group">
-          <label>Nombre Completo *</label>
-          <input 
-            type="text" 
-            name="fullName"
-            className="form-control" 
-            placeholder="Ej. Juan Pérez" 
-            value={formData.fullName}
-            onChange={handleInputChange}
-            required 
-          />
-        </div>
+      {/* MODAL INTERACTIVO */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Solicitar Cotización</h3>
+              <p>Estás cotizando: <strong>{selectedPlan}</strong></p>
+              <button type="button" className="modal-close-btn" onClick={closeModal}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            
+            <form className="modal-body" onSubmit={handleEmailSubmit}>
+              <div className="form-group">
+                <label>Nombre Completo *</label>
+                <input 
+                  type="text" 
+                  name="fullName"
+                  className="form-control" 
+                  placeholder="Ej. Juan Pérez" 
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  required 
+                />
+              </div>
 
-        <div className="form-group">
-          <label>Correo Electrónico *</label>
-          <input 
-            type="email" 
-            name="email"
-            className="form-control" 
-            placeholder="ejemplo@correo.com" 
-            value={formData.email}
-            onChange={handleInputChange}
-            required 
-          />
-        </div>
+              <div className="form-group">
+                <label>Correo Electrónico *</label>
+                <input 
+                  type="email" 
+                  name="email"
+                  className="form-control" 
+                  placeholder="ejemplo@correo.com" 
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required 
+                />
+              </div>
 
-        <div className="form-group">
-          <label>Celular / WhatsApp *</label>
-          <input 
-            type="tel" 
-            name="phone"
-            className="form-control" 
-            placeholder="Ej. 3101234567" 
-            value={formData.phone}
-            onChange={handleInputChange}
-            required 
-          />
-        </div>
+              <div className="form-group">
+                <label>Celular / WhatsApp *</label>
+                <input 
+                  type="tel" 
+                  name="phone"
+                  className="form-control" 
+                  placeholder="Ej. 3101234567" 
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required 
+                />
+              </div>
 
-        <div className="form-group">
-          <label>Ciudad</label>
-          <input 
-            type="text" 
-            name="city"
-            className="form-control" 
-            value={formData.city}
-            onChange={handleInputChange}
-          />
-        </div>
+              <div className="form-group">
+                <label>Ciudad</label>
+                <input 
+                  type="text" 
+                  name="city"
+                  className="form-control" 
+                  value={formData.city}
+                  onChange={handleInputChange}
+                />
+              </div>
 
-        <div className="service-actions-grid">
-          {/* Boton de WhatsApp: Mantiene type="button" para que NO dispare el formulario 
-          */}
-          <button 
-            type="button" 
-            className="btn-service-submit btn-whatsapp-submit"
-            onClick={handleWhatsAppSubmit}
-          >
-            <i className="fa-brands fa-whatsapp"></i> WhatsApp
-          </button>
-          
-          {/* Boton de Correo: Ahora es type="submit", el cual activa el onSubmit del formulario
-          */}
-          <button 
-            type="submit" 
-            className="btn-service-submit btn-email-submit"
-            disabled={isSending}
-          >
-            <i className={isSending ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-envelope"}></i> 
-            {isSending ? ' Enviando...' : ' Enviar Correo'}
-          </button>
+              <div className="service-actions-grid">
+                <button 
+                  type="button" 
+                  className="btn-service-submit btn-whatsapp-submit"
+                  onClick={handleWhatsAppSubmit}
+                >
+                  <i className="fa-brands fa-whatsapp"></i> WhatsApp
+                </button>
+                
+                <button 
+                  type="submit" 
+                  className="btn-service-submit btn-email-submit"
+                  disabled={isSending}
+                >
+                  <i className={isSending ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-envelope"}></i> 
+                  {isSending ? ' Enviando...' : ' Enviar Correo'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }
